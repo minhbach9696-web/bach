@@ -1,0 +1,57 @@
+# ==========================================================================
+# TỰ ĐỘNG BUILD FILE CÀI ĐẶT ANDROID (.apk) TRÊN MÁY CHỦ GITHUB – MIỄN PHÍ
+# Chạy mỗi khi đẩy (push) code lên GitHub, hoặc bấm tay ở thẻ Actions >
+# "Build Android APK" > "Run workflow". Xong khoảng 5–8 phút; file APK nằm
+# ở mục "Artifacts" cuối trang kết quả (tên: TuDienChamCuu-Android).
+# ==========================================================================
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Lấy mã nguồn
+        uses: actions/checkout@v4
+
+      - name: Cài Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Cài Java 21 (Capacitor 8 yêu cầu)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Cài thư viện Capacitor
+        run: npm install
+
+      - name: Tạo dự án Android + biểu tượng app + màn hình chờ
+        run: |
+          npx cap add android
+          npx capacitor-assets generate --android \
+            --iconBackgroundColor '#f6efe0' --iconBackgroundColorDark '#191714' \
+            --splashBackgroundColor '#f6efe0' --splashBackgroundColorDark '#191714'
+          npx cap sync android
+
+      - name: Build APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Đổi tên file cho dễ nhận
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk TuDienChamCuu.apk
+
+      - name: Tải file APK lên mục Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: TuDienChamCuu-Android
+          path: TuDienChamCuu.apk
+          retention-days: 30

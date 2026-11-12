@@ -1,0 +1,76 @@
+# ==========================================================================
+# TỰ ĐỘNG BUILD FILE CÀI ĐẶT iOS (.ipa) TRÊN MÁY MAC CỦA GITHUB
+# --------------------------------------------------------------------------
+# Apple chỉ cho dựng app iPhone bằng Xcode trên macOS, nên kịch bản này
+# thuê máy Mac của GitHub để build.
+# Chạy: thẻ Actions > "Build iOS IPA" > "Run workflow". Xong khoảng 10–15
+# phút; file nằm ở mục "Artifacts" (tên: TuDienChamCuu-iOS).
+#
+# File tạo ra là .ipa CHƯA KÝ (unsigned). iPhone chỉ cài app đã ký, nên cần
+# dùng Sideloadly hoặc AltStore trên máy tính để ký bằng Apple ID của bạn
+# rồi cài (xem HUONG_DAN.txt, Cách 4).
+#
+# Lưu ý chi phí: kho CÔNG KHAI dùng máy Mac miễn phí. Kho RIÊNG TƯ dùng gói
+# phút miễn phí hằng tháng của GitHub (phút máy Mac tính gấp 10 lần), đủ
+# cho vài lần build mỗi tháng.
+# ==========================================================================
+name: Build iOS IPA
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - name: Lấy mã nguồn
+        uses: actions/checkout@v4
+
+      - name: Chọn Xcode bản ổn định mới nhất (Capacitor 8 cần Xcode 26 trở lên)
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Cài Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Cài thư viện Capacitor
+        run: npm install
+
+      - name: Tạo dự án iOS + biểu tượng app + màn hình chờ
+        run: |
+          xcodebuild -version
+          npx cap add ios
+          npx capacitor-assets generate --ios \
+            --iconBackgroundColor '#f6efe0' \
+            --splashBackgroundColor '#f6efe0' --splashBackgroundColorDark '#191714'
+          npx cap sync ios
+
+      - name: Build bản Release cho iPhone (không ký)
+        run: |
+          xcodebuild archive \
+            -project ios/App/App.xcodeproj \
+            -scheme App \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -archivePath build/App.xcarchive \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            | tail -n 40
+
+      - name: Đóng gói thành file .ipa
+        run: |
+          # File .ipa thực chất là file zip chứa thư mục Payload/App.app
+          mkdir -p Payload
+          cp -R build/App.xcarchive/Products/Applications/App.app Payload/
+          zip -qry TuDienChamCuu-unsigned.ipa Payload
+          ls -lh TuDienChamCuu-unsigned.ipa
+
+      - name: Tải file .ipa lên mục Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: TuDienChamCuu-iOS
+          path: TuDienChamCuu-unsigned.ipa
+          retention-days: 30

@@ -1,0 +1,30 @@
+# ==========================================================================
+# ĐƯA BẢN WEB-APP LÊN GITHUB PAGES (cho iPhone/Android cài từ trình duyệt)
+# Sau khi chạy xong, địa chỉ có dạng: https://<tên-tài-khoản>.github.io/<tên-kho>/
+# Cần bật trước: Settings > Pages > Source = "GitHub Actions".
+# Chỉ chạy khi bấm tay (Actions > "Web app (GitHub Pages)" > Run workflow).
+# ==========================================================================
+name: Web app (GitHub Pages)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.dang.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: www
+      - id: dang
+        uses: actions/deploy-pages@v4
